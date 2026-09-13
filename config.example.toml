@@ -1,18 +1,53 @@
 # Loom Agent OS 配置文件示例
 # 复制此文件为 config.toml 并填入实际值
 
+# 日志配置
+[logging]
+# 日志过滤表达式，语法同 tracing EnvFilter / RUST_LOG
+# 级别：trace < debug < info < warn < error
+# 示例：
+#   "loom=debug,tower_http=info"        —— loom 全部模块 debug，HTTP 中间件 info
+#   "info"                              —— 全局 info
+#   "loom_agent=trace,loom_llm=debug"   —— 仅 loom_agent trace、loom_llm debug
+#   "warn,loom_chat::chat=debug"        —— 全局 warn，但 chat.rs 输出 debug
+# 优先级：RUST_LOG 环境变量 > 此处配置 > 默认值
+filter = "loom=debug,tower_http=info"
+
 [server]
 host = "127.0.0.1"
 port = 3000
+# 自我唤醒用的基础 URL（推模式投递）。后台任务完成后，completion watcher
+# 会向 `${self_base_url}/chat` 发送空 POST 唤醒会话。
+# 不设置时回退为 `http://{host}:{port}`。
+# self_base_url = "http://127.0.0.1:3000"
 
-# LLM Provider 配置（OpenAI 兼容协议，支持 sensenova、deepseek、qwen 等）
+# PostgreSQL 数据库配置（用于 checkpoint / 会话持久化）
+# 也可通过环境变量 POSTGRES_HOST/PORT/USER/PASSWORD/DBNAME 覆盖
+[database]
+host = "127.0.0.1"
+port = 5432
+user = "postgres"
+password = "postgres"
+dbname = "postgres"
+max_connections = 5
+connect_timeout_secs = 10
+
+# LLM Provider 配置（OpenAI 兼容协议，支持 deepseek、qwen 等）
 [llm]
-base_url = "https://token.sensenova.cn/v1"
+base_url = ""
 api_key = "your-api-key-here"
-model = "sensenova-6.8-flash-lite"
+model = ""
 temperature = 0.7
 # max_tokens 不设置则使用模型默认值
 # max_tokens = 4096
+# 模型上下文窗口大小（输入+输出总上限），不同模型不同：
+#   gpt-4o = 128000, gpt-4o-mini = 128000, deepseek-v3 = 128000,
+#   qwen-turbo = 32768, qwen-plus = 131072, sensenova-6.8 = 32768
+# 设置后压缩阈值自动计算为 max_context_tokens * compression_ratio
+max_context_tokens = 32768
+# 压缩阈值占上下文窗口的比例（0.1~0.95），默认 0.75
+# 即上下文达到窗口的 75% 时触发压缩，留出 25% 给响应
+compression_ratio = 0.75
 
 # Agent 循环配置
 [agent]
@@ -24,6 +59,14 @@ allow_delegation = true
 max_delegation_depth = 3
 # 最大并发子 Agent 数
 max_concurrent_children = 5
+# checkpoint 保存间隔（每 N 轮保存一次 step checkpoint，0 表示不保存 step checkpoint）
+# interrupt checkpoint 不受此限制，始终保存
+checkpoint_interval = 1
+# 单轮中并发执行的最大工具数（防止 join_all 无限制并发耗尽资源）
+max_concurrent_tools = 10
+# 委派摘要最大字符数（子 Agent 结果返回父 Agent 前截断）
+# 防止子 Agent 大结果撑爆父上下文
+delegate_summary_max_chars = 8000
 
 # 结构化提示词配置（三层架构：stable / context / volatile）
 [agent.prompt]
@@ -54,3 +97,49 @@ enabled = true
 names = ["AGENTS.md", "AGENTS.override.md", ".cursorrules", "SOUL.md"]
 # 单个文件最大字符数
 max_chars = 20000
+
+# 上下文压缩配置
+[agent.compression]
+# 触发压缩的 token 阈值（当 llm.max_context_tokens 未设置时生效）
+threshold_tokens = 12000
+# 保留的尾部轮数（最近 N 个 user/assistant 交换）
+tail_turns = 6
+# 单条工具输出最大字符数（超出截断）
+max_tool_output_chars = 4000
+# 摘要目标字符数
+summary_target_chars = 2000
+
+# API 重试配置（指数退避重试）
+[agent.api_retry]
+# 最大重试次数（不含首次请求）
+max_retries = 5
+# 初始退避延迟（毫秒）
+base_delay_ms = 1000
+# 最大退避延迟（毫秒）
+max_delay_ms = 30000
+# 单次请求超时（秒），0 表示不设超时
+request_timeout_secs = 0
+
+# 工具调用防护配置（去重、循环检测、失败分类）
+[agent.guardrails]
+# 同一 (tool_name, args_hash) 在滑动窗口内最多重复次数
+max_duplicate_calls = 3
+# 同一工具连续失败次数上限（超过则 guardrail halt）
+max_consecutive_failures = 5
+# 循环检测滑动窗口大小（最近 N 次工具调用）
+loop_window = 20
+# 是否启用工具调用去重
+deduplicate = true
+# 单轮 web_search 调用上限
+max_web_searches = 50
+# 单轮 spawn_agent 调用上限
+max_subagents = 50
+
+# 活性看门狗配置（检测 agent 循环是否卡死）
+[agent.liveness]
+# 是否启用活性看门狗
+enabled = false
+# 活动超时（秒），超过此时间无活动则视为卡死
+timeout_secs = 300
+# 看门狗检查间隔（秒）
+check_interval_secs = 30
