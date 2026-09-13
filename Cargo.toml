@@ -1,0 +1,51 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/loom-core",
+    "crates/loom-adapters",
+    "crates/loom-tools",
+    "crates/loom-isolation",
+    "crates/loom-infra",
+    "crates/loom-llm",
+    "crates/loom-agent",
+    "crates/loom-memory",
+    "crates/loom-chat",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Loom Contributors"]
+license = "MIT"
+repository = "https://github.com/your-org/loom"
+
+[workspace.dependencies]
+loom-core = { path = "crates/loom-core" }
+loom-adapters = { path = "crates/loom-adapters" }
+loom-tools = { path = "crates/loom-tools" }
+loom-isolation = { path = "crates/loom-isolation" }
+loom-infra = { path = "crates/loom-infra" }
+loom-llm = { path = "crates/loom-llm" }
+loom-agent = { path = "crates/loom-agent" }
+loom-memory = { path = "crates/loom-memory" }
+
+async-trait = "0.1"
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+futures = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+parking_lot = "0.12"
+axum = { version = "0.7", features = ["macros"] }
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+anyhow = "1"
+toml = "0.8"
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid", "json"] }
+dotenvy = "0.15"
+percent-encoding = "2"

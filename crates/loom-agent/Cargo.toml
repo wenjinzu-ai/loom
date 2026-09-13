@@ -1,0 +1,25 @@
+[package]
+name = "loom-agent"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+loom-core.workspace = true
+loom-infra = { path = "../loom-infra" }
+loom-isolation = { path = "../loom-isolation" }
+loom-llm = { path = "../loom-llm" }
+loom-memory = { path = "../loom-memory" }
+async-trait.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+futures.workspace = true
+tracing.workspace = true
+parking_lot.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+anyhow.workspace = true

@@ -1,0 +1,140 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial,
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.4);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.6);
+}
+
+/* Markdown 渲染样式 */
+.prose-chat {
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+.prose-chat p {
+  margin: 0.5rem 0;
+}
+
+.prose-chat ul,
+.prose-chat ol {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.prose-chat li {
+  margin: 0.25rem 0;
+}
+
+.prose-chat code {
+  background: rgba(148, 163, 184, 0.2);
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+}
+
+.prose-chat pre {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+
+.prose-chat pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+.prose-chat blockquote {
+  border-left: 3px solid #6366f1;
+  padding-left: 1rem;
+  color: #64748b;
+  margin: 0.5rem 0;
+}
+
+.prose-chat h1,
+.prose-chat h2,
+.prose-chat h3 {
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+}
+
+.prose-chat h1 {
+  font-size: 1.25rem;
+}
+
+.prose-chat h2 {
+  font-size: 1.125rem;
+}
+
+.prose-chat h3 {
+  font-size: 1rem;
+}
+
+.prose-chat table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+}
+
+.prose-chat th,
+.prose-chat td {
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.prose-chat th {
+  background: rgba(99, 102, 241, 0.1);
+  font-weight: 600;
+}
+
+.prose-chat a {
+  color: #6366f1;
+  text-decoration: underline;
+}
+
+/* 打字光标 */
+.typing-cursor::after {
+  content: "▋";
+  animation: blink 1s step-end infinite;
+  color: #6366f1;
+  margin-left: 2px;
+}

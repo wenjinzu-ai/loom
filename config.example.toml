@@ -1,0 +1,56 @@
+# Loom Agent OS 配置文件示例
+# 复制此文件为 config.toml 并填入实际值
+
+[server]
+host = "127.0.0.1"
+port = 3000
+
+# LLM Provider 配置（OpenAI 兼容协议，支持 sensenova、deepseek、qwen 等）
+[llm]
+base_url = "https://token.sensenova.cn/v1"
+api_key = "your-api-key-here"
+model = "sensenova-6.8-flash-lite"
+temperature = 0.7
+# max_tokens 不设置则使用模型默认值
+# max_tokens = 4096
+
+# Agent 循环配置
+[agent]
+# 最大迭代次数（防止死循环）
+max_iterations = 20
+# 是否允许委派子 Agent
+allow_delegation = true
+# 最大委派深度（防止无限递归）
+max_delegation_depth = 3
+# 最大并发子 Agent 数
+max_concurrent_children = 5
+
+# 结构化提示词配置（三层架构：stable / context / volatile）
+[agent.prompt]
+# stable tier: 身份定义（整个会话不变，用于 LLM 前缀缓存）
+identity = "You are Loom Agent, an AI agent operating within the Loom Agent OS. Be direct: match the length of your reply to the weight of the ask. No filler, no restating the request back, no narrating tool calls. Use tools to accomplish your goal; for complex sub-tasks, delegate to sub-agents."
+
+# stable tier: 执行指导
+guidance = """## Execution Guidance
+- Use tools to accomplish your goal when appropriate
+- For complex sub-tasks, delegate to sub-agents via spawn_agent
+- spawn_agent supports a single "goal" OR a "tasks" array for batch delegation
+- When "tasks" is provided, all sub-agents run concurrently and results are returned together
+- For top-level agents (no parent), spawn_agent with background=true returns immediately with a handle; the result becomes available later. Sub-agents always block synchronously.
+- After all necessary tool calls, provide a concise final summary of what was accomplished"""
+
+# stable tier: 工具调用规则
+tool_rules = """## Tool Rules
+- Use action="list" to list running sub-agents, action="stop" to stop a sub-agent by subagent_id
+- When calling spawn_agent, provide a clear goal for the sub-agent
+- Sub-agent results are returned as JSON; parse them to extract useful information
+- If a tool call fails, try an alternative approach or explain the issue"""
+
+# context tier: 外部上下文文件加载配置
+[agent.prompt.context_files]
+# 是否启用外部上下文文件加载
+enabled = true
+# 要加载的文件名（从工作目录向上查找到 git root）
+names = ["AGENTS.md", "AGENTS.override.md", ".cursorrules", "SOUL.md"]
+# 单个文件最大字符数
+max_chars = 20000

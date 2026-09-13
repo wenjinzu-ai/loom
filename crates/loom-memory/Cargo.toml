@@ -1,0 +1,25 @@
+[package]
+name = "loom-memory"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[lib]
+name = "loom_memory"
+path = "src/lib.rs"
+
+[dependencies]
+loom-core.workspace = true
+loom-llm.workspace = true
+async-trait.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+anyhow.workspace = true
+regex = "1"
+
+[dev-dependencies]
+loom-infra.workspace = true
+tokio = { version = "1", features = ["full", "macros"] }

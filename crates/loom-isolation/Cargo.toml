@@ -1,0 +1,22 @@
+[package]
+name = "loom-isolation"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+loom-core.workspace = true
+async-trait.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+futures.workspace = true
+tracing.workspace = true
+parking_lot.workspace = true
+chrono.workspace = true
+wasmtime = "22"
+base64 = "0.22"
+anyhow.workspace = true
