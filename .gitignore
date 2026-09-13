@@ -18,6 +18,3 @@ web/build/
 # OS
 .DS_Store
 Thumbs.db
-
-# Local scripts
-scenario_chat.ps1
