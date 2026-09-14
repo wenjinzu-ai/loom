@@ -139,12 +139,7 @@ pub async fn chat_stream(
             // 父中断传播：stream 被 drop 时取消令牌，停止同步子 Agent
             let _cancel_guard = CancelGuard(Some(cancel_token.clone()));
 
-            tracing::debug!(
-                "[chat_stream] start: session_id={}, agent_id={}, goal_len={}",
-                session_id,
-                agent_id,
-                goal.len()
-            );
+            tracing::debug!("[chat_stream] start: session_id={}, agent_id={}, goal_len={}, goal={}", session_id, agent_id, goal.len(), goal);
 
             yield Event::default()
                 .event("thinking")
@@ -156,11 +151,7 @@ pub async fn chat_stream(
 
             // 加载会话历史（若存在）
             let mut history = sessions.get(&session_scope, &session_id).await;
-            tracing::debug!(
-                "[chat_stream] loaded history: session_id={}, messages={}",
-                session_id,
-                history.as_ref().map(|h| h.len()).unwrap_or(0)
-            );
+            tracing::debug!("[chat_stream] loaded history: session_id={}, messages={}, history={:?}", session_id, history.as_ref().map(|h| h.len()).unwrap_or(0), history);
 
             // P0-1: 回注已完成的后台子 Agent 结果到会话历史
             // 上一轮后台启动的子 Agent 在此期间完成，结果已存入 BackgroundTaskRegistry。
@@ -177,12 +168,7 @@ pub async fn chat_stream(
                 .filter_map(|t| t.result.as_ref().map(|r| (t.child_agent_id, t.goal.clone(), r.clone())))
                 .collect();
             if !bg_results.is_empty() {
-                tracing::info!(
-                    "[chat_stream] injecting {} background result(s) into session {} (claimed {:?})",
-                    bg_results.len(),
-                    session_id,
-                    claimed_ids
-                );
+                tracing::info!("[chat_stream] injecting {} background result(s) into session {} (claimed {:?})", bg_results.len(), session_id, claimed_ids);
                 let total_duration_ms: u64 = bg_results.iter().map(|(_, _, r)| r.duration_ms).sum();
                 let total_iterations: usize = bg_results.iter().map(|(_, _, r)| r.usage.iterations).sum();
                 let total_tool_calls: usize = bg_results.iter().map(|(_, _, r)| r.usage.tool_calls).sum();
@@ -284,18 +270,8 @@ pub async fn chat_stream(
                             Ok(outcome) => {
                                 match outcome {
                                     loom_agent::AgentRunOutcome::Finished(result) => {
-                                        tracing::info!(
-                                            "chat finished: iterations={}, tool_calls={}",
-                                            result.iterations,
-                                            result.tool_calls_made
-                                        );
-                                        tracing::debug!(
-                                            "[chat_stream] finished detail: session_id={}, response_len={}, history_len={}, tool_names={:?}",
-                                            session_id,
-                                            result.final_response.len(),
-                                            result.history.len(),
-                                            result.tool_names
-                                        );
+                                        tracing::info!("chat finished: iterations={}, tool_calls={}", result.iterations, result.tool_calls_made);
+                                        tracing::debug!("[chat_stream] finished detail: session_id={}, response_len={}, history_len={}, tool_names={:?}, response={}", session_id, result.final_response.len(), result.history.len(), result.tool_names, result.final_response);
                                         // 保存更新后的对话历史到后端存储
                                         let saved = if let Err(e) = sessions.save(&session_scope, &session_id, &result.history).await {
                                             tracing::error!("failed to persist session {}: {}", session_id, e);
@@ -332,17 +308,8 @@ pub async fn chat_stream(
                                         thread_id,
                                         history,
                                     } => {
-                                        tracing::info!(
-                                            "chat interrupted: checkpoint={}, thread={}",
-                                            checkpoint_id,
-                                            thread_id
-                                        );
-                                        tracing::debug!(
-                                            "[chat_stream] interrupt detail: session_id={}, value={}, history_len={}",
-                                            session_id,
-                                            value,
-                                            history.len()
-                                        );
+                                        tracing::info!("chat interrupted: checkpoint={}, thread={}", checkpoint_id, thread_id);
+                                        tracing::debug!("[chat_stream] interrupt detail: session_id={}, value={}, history_len={}", session_id, value, history.len());
                                         // 保存中断时的消息历史
                                         let saved = if let Err(e) = sessions.save(&session_scope, &session_id, &history).await {
                                             tracing::error!("failed to persist session {}: {}", session_id, e);
@@ -759,12 +726,7 @@ pub async fn resume_session(
 
     let cmd = ResumeCommand::new(&req.thread_id, &req.checkpoint_id, req.resume_value);
 
-    tracing::debug!(
-        "[resume_session] start: session_id={}, thread_id={}, checkpoint_id={}",
-        session_id,
-        req.thread_id,
-        req.checkpoint_id
-    );
+    tracing::debug!("[resume_session] start: session_id={}, thread_id={}, checkpoint_id={}", session_id, req.thread_id, req.checkpoint_id);
 
     // P0: resume 前先认领后台结果，避免在 interrupt 期间完成的子 Agent 结果丢失
     let claimed = agent_loop_with_progress.claim_completed_tasks(&session_id);
@@ -817,18 +779,8 @@ pub async fn resume_session(
                             Ok(outcome) => {
                                 match outcome {
                                     loom_agent::AgentRunOutcome::Finished(result) => {
-                                        tracing::info!(
-                                            "resume finished: iterations={}, tool_calls={}",
-                                            result.iterations,
-                                            result.tool_calls_made
-                                        );
-                                        tracing::debug!(
-                                            "[resume_session] finished detail: session_id={}, response_len={}, history_len={}, tool_names={:?}",
-                                            session_id,
-                                            result.final_response.len(),
-                                            result.history.len(),
-                                            result.tool_names
-                                        );
+                                        tracing::info!("resume finished: iterations={}, tool_calls={}", result.iterations, result.tool_calls_made);
+                                        tracing::debug!("[resume_session] finished detail: session_id={}, response_len={}, history_len={}, tool_names={:?}, response={}", session_id, result.final_response.len(), result.history.len(), result.tool_names, result.final_response);
                                         // P0: 将后台结果注入到恢复后的历史中，避免丢失
                                         let mut history = result.history.clone();
                                         if !bg_results.is_empty() {
@@ -883,16 +835,8 @@ pub async fn resume_session(
                                         thread_id,
                                         history,
                                     } => {
-                                        tracing::info!(
-                                            "resume interrupted again: checkpoint={}",
-                                            checkpoint_id
-                                        );
-                                        tracing::debug!(
-                                            "[resume_session] re-interrupt detail: session_id={}, value={}, history_len={}",
-                                            session_id,
-                                            value,
-                                            history.len()
-                                        );
+                                        tracing::info!("resume interrupted again: checkpoint={}", checkpoint_id);
+                                        tracing::debug!("[resume_session] re-interrupt detail: session_id={}, value={}, history_len={}", session_id, value, history.len());
                                         // P0: 中断时也注入后台结果到历史
                                         let mut history = history.clone();
                                         if !bg_results.is_empty() {
@@ -991,12 +935,7 @@ pub async fn resume_from_checkpoint_session(
         .with_scope(scope)
         .with_session_id(session_id.clone());
 
-    tracing::debug!(
-        "[resume_from_checkpoint_session] start: session_id={}, thread_id={}, checkpoint_id={:?}",
-        session_id,
-        req.thread_id,
-        req.checkpoint_id
-    );
+    tracing::debug!("[resume_from_checkpoint_session] start: session_id={}, thread_id={}, checkpoint_id={:?}", session_id, req.thread_id, req.checkpoint_id);
 
     // P0: resume 前先认领后台结果，避免在 interrupt 期间完成的子 Agent 结果丢失
     let claimed = agent_loop_with_progress.claim_completed_tasks(&session_id);
@@ -1050,11 +989,8 @@ pub async fn resume_from_checkpoint_session(
                             Ok(outcome) => {
                                 match outcome {
                                     loom_agent::AgentRunOutcome::Finished(result) => {
-                                        tracing::info!(
-                                            "[resume_from_checkpoint_session] finished: iterations={}, tool_calls={}",
-                                            result.iterations,
-                                            result.tool_calls_made
-                                        );
+                                        tracing::info!("[resume_from_checkpoint_session] finished: iterations={}, tool_calls={}", result.iterations, result.tool_calls_made);
+                                        tracing::debug!("[resume_from_checkpoint_session] finished detail: session_id={}, response_len={}, history_len={}, tool_names={:?}, response={}", session_id, result.final_response.len(), result.history.len(), result.tool_names, result.final_response);
                                         // P0: 将后台结果注入到恢复后的历史中，避免丢失
                                         let mut history = result.history.clone();
                                         if !bg_results.is_empty() {
@@ -1108,10 +1044,7 @@ pub async fn resume_from_checkpoint_session(
                                         thread_id,
                                         history,
                                     } => {
-                                        tracing::info!(
-                                            "[resume_from_checkpoint_session] interrupted: checkpoint={}",
-                                            checkpoint_id
-                                        );
+                                        tracing::info!("[resume_from_checkpoint_session] interrupted: checkpoint={}", checkpoint_id);
                                         // P0: 中断时也注入后台结果到历史
                                         let mut history = history.clone();
                                         if !bg_results.is_empty() {

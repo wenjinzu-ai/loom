@@ -154,10 +154,12 @@ impl LlmProvider for OpenAiProvider {
         let url = format!("{}/chat/completions", self.config.base_url);
 
         tracing::debug!(
-            "[llm] chat request: model={}, messages={}, tools={}",
+            "[llm] chat request: model={}, messages={}, tools={}, messages_body={:?}, tools_def={:?}",
             self.config.model,
             messages.len(),
-            tools.len()
+            tools.len(),
+            messages,
+            tools
         );
         let start = std::time::Instant::now();
 
@@ -252,11 +254,13 @@ impl LlmProvider for OpenAiProvider {
             .unwrap_or_default();
 
         tracing::debug!(
-            "[llm] chat response: finish_reason={:?}, content_len={}, tool_calls={}, elapsed_ms={}",
+            "[llm] chat response: finish_reason={:?}, content_len={}, tool_calls={}, elapsed_ms={}, content={:?}, tool_calls_body={:?}",
             finish_reason,
             content.as_ref().map(|s| s.len()).unwrap_or(0),
             tool_calls.len(),
-            start.elapsed().as_millis()
+            start.elapsed().as_millis(),
+            content,
+            tool_calls
         );
 
         Ok(ChatResponse {

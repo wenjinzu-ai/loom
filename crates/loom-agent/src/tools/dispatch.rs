@@ -55,10 +55,11 @@ pub async fn execute_tool_call(
                         }
                     };
                     tracing::debug!(
-                        "[tool_dispatch] tool result: name={}, content_len={}, elapsed_ms={}",
+                        "[tool_dispatch] tool result: name={}, content_len={}, elapsed_ms={}, content={}",
                         tool_call.name,
                         content.len(),
-                        start.elapsed().as_millis()
+                        start.elapsed().as_millis(),
+                        content
                     );
                     ToolCallResult {
                         tool_call_id: tool_call.id.clone(),
@@ -128,6 +129,7 @@ pub async fn dispatch_tool_calls(
                 // 限制单轮并发工具数，防止 LLM 一次返回大量工具调用时耗尽连接池/资源
                 let _permit = tool_semaphore.acquire_owned().await.ok();
                 if tc.name == "spawn_agent" {
+                    tracing::debug!("[tool_dispatch] executing tool: name={}, args={}", tc.name, tc.arguments);
                     match delegation
                         .execute_spawn_agent(
                             &tc.arguments,
@@ -141,18 +143,24 @@ pub async fn dispatch_tool_calls(
                         )
                         .await
                     {
-                        Ok(v) => ToolCallResult {
-                            tool_call_id: tc.id.clone(),
-                            name: tc.name.clone(),
-                            content: v.to_string(),
-                            is_error: false,
-                        },
-                        Err(e) => ToolCallResult {
-                            tool_call_id: tc.id.clone(),
-                            name: tc.name.clone(),
-                            content: format!("spawn_agent error: {e}"),
-                            is_error: true,
-                        },
+                        Ok(v) => {
+                            tracing::debug!("[tool_dispatch] tool result: name={}, content={}", tc.name, v);
+                            ToolCallResult {
+                                tool_call_id: tc.id.clone(),
+                                name: tc.name.clone(),
+                                content: v.to_string(),
+                                is_error: false,
+                            }
+                        }
+                        Err(e) => {
+                            tracing::debug!("[tool_dispatch] tool error: name={}, error={}", tc.name, e);
+                            ToolCallResult {
+                                tool_call_id: tc.id.clone(),
+                                name: tc.name.clone(),
+                                content: format!("spawn_agent error: {e}"),
+                                is_error: true,
+                            }
+                        }
                     }
                 } else {
                     execute_tool_call(&tc, registry, executor, &ctx).await

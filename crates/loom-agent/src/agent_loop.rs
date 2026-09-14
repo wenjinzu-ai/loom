@@ -464,7 +464,7 @@ impl AgentLoop {
             );
             return Some(event);
         }
-        tracing::debug!("agent {} iteration {}", ctx.agent_id, ctx.iterations);
+        tracing::debug!("agent {} iteration {} (session_id={:?})", ctx.agent_id, ctx.iterations, self.session_id);
         None
     }
 
@@ -584,8 +584,9 @@ impl AgentLoop {
         tools: &[loom_llm::ToolDefinition],
     ) -> Result<loom_llm::ChatResponse> {
         tracing::debug!(
-            "[agent_loop] llm chat: agent_id={}, messages={}, tools={}, estimated_tokens={}",
+            "[agent_loop] llm chat: agent_id={}, session_id={:?}, messages={}, tools={}, estimated_tokens={}",
             ctx.agent_id,
+            self.session_id,
             ctx.messages.len(),
             tools.len(),
             estimate_tokens(&ctx.messages)
@@ -668,9 +669,10 @@ impl AgentLoop {
             memory.on_session_end(&scope, &ctx.messages).await;
         }
         tracing::info!(
-            "agent {} finished after {} iterations",
+            "agent {} finished after {} iterations (session_id={:?})",
             ctx.agent_id,
-            ctx.iterations
+            ctx.iterations,
+            self.session_id
         );
         finished_event(
             &ctx.messages,
@@ -703,7 +705,7 @@ impl AgentLoop {
         ctx.tool_calls_made += all_tool_calls.len();
         let cp = self.save_checkpoint(ctx, "interrupt").await?;
         ctx.last_checkpoint_id = Some(cp.id.clone());
-        tracing::info!("agent {} interrupted at checkpoint {}", ctx.agent_id, cp.id);
+        tracing::info!("agent {} interrupted at checkpoint {} (session_id={:?})", ctx.agent_id, cp.id, self.session_id);
         if let Some(memory) = &self.memory {
             let scope = self.memory_scope();
             let (u, a) = last_turn_pair(&ctx.messages);
