@@ -86,11 +86,18 @@ export default function App() {
         let lastAssistant = null
         for (const m of allMsgs) {
           if (m.role === 'user' || m.role === 'assistant') {
-            visible.push({ role: m.role, content: m.content })
-            if (m.role === 'assistant') lastAssistant = visible[visible.length - 1]
+            const msg = { role: m.role, content: m.content }
+            if (m.role === 'assistant') {
+              // 过滤掉 content 为空的 assistant 消息（纯工具调用的中间轮次）
+              if (!m.content) continue
+              msg.thinking = ''
+              msg.isLoading = false
+              lastAssistant = msg
+            }
+            visible.push(msg)
           }
         }
-        // 将 tool_trace 附加到最后一条 assistant 消息
+        // tool_trace 汇总到最后一条 assistant 消息
         if (lastAssistant && detail.tool_trace?.entries?.length) {
           lastAssistant.toolTrace = detail.tool_trace.entries
           lastAssistant.iterations = detail.tool_trace.entries.length
@@ -168,6 +175,7 @@ export default function App() {
                   ...last,
                   content: data.text || '',
                   thinking: last.thinking || '思考完成',
+                  isLoading: false,
                   iterations: data.iterations,
                   toolCalls: data.tool_calls_made,
                   toolTrace: finalTrace,
@@ -306,6 +314,7 @@ export default function App() {
                   ...last,
                   content: data.text || '',
                   thinking: last.thinking || '思考完成',
+                  isLoading: false,
                   iterations: data.iterations,
                   toolCalls: data.tool_calls_made,
                   toolTrace: finalTrace,

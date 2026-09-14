@@ -36,30 +36,32 @@ export default function MessageItem({ message }) {
         {!isUser && (
           <ThinkingBlock
             thinking={message.thinking}
-            isLoading={message.thinking && !message.content}
+            isLoading={message.isLoading ?? (message.thinking && !message.content)}
             iterations={message.iterations}
             toolCalls={message.toolCalls}
             toolTrace={message.toolTrace}
           />
         )}
 
-        <div
-          className={`relative px-4 py-2.5 rounded-2xl ${
-            isUser
-              ? 'bg-brand-600 text-white rounded-tr-sm'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-tl-sm'
-          }`}
-        >
-          {message.content ? (
-            <div className="prose-chat">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
-            </div>
-          ) : message.thinking ? (
-            <span className="text-slate-400 dark:text-slate-500 italic">思考中...</span>
-          ) : (
-            <span className="inline-block w-2 h-4 bg-brand-500 animate-pulse-slow rounded-sm" />
-          )}
-        </div>
+        {(message.content || message.isLoading || message.thinking) && (
+          <div
+            className={`relative px-4 py-2.5 rounded-2xl ${
+              isUser
+                ? 'bg-brand-600 text-white rounded-tr-sm'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-tl-sm'
+            }`}
+          >
+            {message.content ? (
+              <div className="prose-chat">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+              </div>
+            ) : message.isLoading ? (
+              <span className="inline-block w-2 h-4 bg-brand-500 animate-pulse-slow rounded-sm" />
+            ) : (
+              <span className="text-slate-400 dark:text-slate-500 italic">思考中...</span>
+            )}
+          </div>
+        )}
 
         {/* 复制按钮 */}
         {message.content && !isUser && (

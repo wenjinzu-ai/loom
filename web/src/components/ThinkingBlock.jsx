@@ -82,7 +82,12 @@ export default function ThinkingBlock({ thinking, isLoading, iterations, toolCal
   const [expanded, setExpanded] = useState(false)
 
   const hasToolTrace = toolTrace && toolTrace.length > 0
-  const hasContent = thinking || isLoading || iterations != null || toolCalls != null || hasToolTrace
+  const hasContent =
+    Boolean(thinking) ||
+    Boolean(isLoading) ||
+    iterations != null ||
+    (toolCalls != null && toolCalls > 0) ||
+    hasToolTrace
 
   if (!hasContent) return null
 
@@ -122,14 +127,14 @@ export default function ThinkingBlock({ thinking, isLoading, iterations, toolCal
               {thinking}
             </p>
           )}
-          {(iterations != null || toolCalls != null) && (
+          {(iterations != null || (toolCalls != null && toolCalls > 0)) && (
             <div className="mt-2 flex flex-wrap gap-2">
               {iterations != null && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-400">
                   迭代 {iterations} 轮
                 </span>
               )}
-              {toolCalls != null && (
+              {toolCalls != null && toolCalls > 0 && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-400">
                   工具调用 {toolCalls} 次
                 </span>
