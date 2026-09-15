@@ -283,14 +283,26 @@ export default function App() {
 
   // Human-in-the-Loop 恢复：将用户输入作为 resume_value 提交，继续 Agent 执行
   const handleResume = useCallback(
-    (text) => {
+    (resumeValue) => {
       if (isStreaming || !interruptInfo) return
 
       const { session_id, checkpoint_id, thread_id } = interruptInfo
-      const resumeValue = text
+
+      // resumeValue 可能是字符串或对象（选项按钮的 value）
+      // 展示时转为可读文本
+      let displayText
+      if (typeof resumeValue === 'string') {
+        displayText = resumeValue
+      } else {
+        try {
+          displayText = JSON.stringify(resumeValue)
+        } catch {
+          displayText = String(resumeValue)
+        }
+      }
 
       // 将用户回复作为一条消息追加展示
-      const userMsg = { role: 'user', content: text }
+      const userMsg = { role: 'user', content: displayText }
       const assistantMsg = { role: 'assistant', content: '', thinking: '' }
       setMessages((prev) => [...prev, userMsg, assistantMsg])
       setInterruptInfo(null)

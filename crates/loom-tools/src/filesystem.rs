@@ -111,6 +111,34 @@ impl ToolSet for FilesystemToolSet {
                 streaming: false,
                 tags: vec!["file".into()],
             },
+            ToolSpec {
+                name: "delete_file".into(),
+                description: "⚠️ DESTRUCTIVE: Permanently delete a file. This CANNOT be undone. BEFORE calling delete_file, you MUST call the 'interrupt' tool with value={\"path\": \"...\", \"reason\": \"...\"} and ask the human to confirm. Only call delete_file if the human explicitly approves.".into(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "Path to the file to delete permanently"}
+                    },
+                    "required": ["path"]
+                }),
+                output_schema: json!({"type": "object"}),
+                streaming: false,
+                tags: vec!["file".into(), "destructive".into()],
+            },
+            ToolSpec {
+                name: "delete_dir".into(),
+                description: "⚠️ DESTRUCTIVE: Permanently delete a directory and ALL its contents recursively. This CANNOT be undone. BEFORE calling delete_dir, you MUST call the 'interrupt' tool with value={\"path\": \"...\", \"reason\": \"...\"} and ask the human to confirm. Only call delete_dir if the human explicitly approves.".into(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "Path to the directory to delete permanently (recursive)"}
+                    },
+                    "required": ["path"]
+                }),
+                output_schema: json!({"type": "object"}),
+                streaming: false,
+                tags: vec!["file".into(), "destructive".into()],
+            },
         ]
     }
 
@@ -121,6 +149,8 @@ impl ToolSet for FilesystemToolSet {
             "patch" => self.patch(&args).await,
             "search_files" => self.search_files(&args).await,
             "list_dir" => self.list_dir(&args).await,
+            "delete_file" => self.delete_file(&args).await,
+            "delete_dir" => self.delete_dir(&args).await,
             _ => Err(loom_core::LoomError::CapabilityNotFound(tool_name.into())),
         }
     }
@@ -350,6 +380,62 @@ impl FilesystemToolSet {
         }
         names.sort();
         Ok(json!(names))
+    }
+
+    async fn delete_file(&self, args: &Value) -> Result<Value> {
+        let path = args["path"].as_str().unwrap_or("");
+        if path.is_empty() {
+            return Err(loom_core::LoomError::Other(
+                "delete_file: 'path' is required".into(),
+            ));
+        }
+        let p = Path::new(path);
+        if !p.exists() {
+            return Err(loom_core::LoomError::Other(format!(
+                "delete_file: path not found: {path}"
+            )));
+        }
+        if p.is_dir() {
+            return Err(loom_core::LoomError::Other(format!(
+                "delete_file: '{path}' is a directory, use delete_dir instead"
+            )));
+        }
+        tokio::fs::remove_file(p).await.map_err(|e| {
+            loom_core::LoomError::Other(format!("delete_file: cannot remove '{path}': {e}"))
+        })?;
+        tracing::debug!("[delete_file] deleted: path={}", path);
+        Ok(json!({
+            "path": path,
+            "deleted": true,
+        }))
+    }
+
+    async fn delete_dir(&self, args: &Value) -> Result<Value> {
+        let path = args["path"].as_str().unwrap_or("");
+        if path.is_empty() {
+            return Err(loom_core::LoomError::Other(
+                "delete_dir: 'path' is required".into(),
+            ));
+        }
+        let p = Path::new(path);
+        if !p.exists() {
+            return Err(loom_core::LoomError::Other(format!(
+                "delete_dir: path not found: {path}"
+            )));
+        }
+        if !p.is_dir() {
+            return Err(loom_core::LoomError::Other(format!(
+                "delete_dir: '{path}' is not a directory, use delete_file instead"
+            )));
+        }
+        tokio::fs::remove_dir_all(p).await.map_err(|e| {
+            loom_core::LoomError::Other(format!("delete_dir: cannot remove '{path}': {e}"))
+        })?;
+        tracing::debug!("[delete_dir] deleted recursively: path={}", path);
+        Ok(json!({
+            "path": path,
+            "deleted": true,
+        }))
     }
 }
 

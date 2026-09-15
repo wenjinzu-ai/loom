@@ -363,9 +363,56 @@ impl AgentLoop {
             memory.load_session(&scope, &cmd.thread_id).await;
         }
 
+        // 处理 max_iterations 中断的恢复选项
+        let max_iter_action = cmd
+            .resume_value
+            .get("action")
+            .and_then(|v| v.as_str());
+        if max_iter_action == Some("summarize") {
+            // 用户选择"停止并总结"：发起一次不带工具的 LLM 调用获取总结
+            tracing::info!(
+                "[resume] max_iterations summarize: requesting final summary without tools"
+            );
+            messages.push(ChatMessage::user(
+                "你已达到最大工具调用迭代次数。请提供最终回复，总结目前已发现和完成的内容，不要再调用任何工具。"
+                    .to_string(),
+            ));
+            let summary_resp = crate::api_retry::chat_with_retry(
+                &*scoped_self.llm,
+                messages.clone(),
+                vec![],
+                &scoped_self.config.api_retry,
+            )
+            .await?;
+            let summary = summary_resp
+                .content
+                .unwrap_or_else(|| "(empty summary)".to_string());
+            messages.push(ChatMessage::assistant(summary.clone()));
+            return Ok(AgentRunOutcome::Finished(AgentRunResultWithHistory {
+                final_response: summary,
+                iterations: state.iterations,
+                tool_calls_made: state.tool_calls_made,
+                tool_names: state.tool_names,
+                duration_ms: 0,
+                tool_trace: None,
+                history: messages,
+            }));
+        }
+
+        // 用户选择"继续执行"或其他情况：continue 时重置迭代计数
+        let iterations = if max_iter_action == Some("continue") {
+            tracing::info!(
+                "[resume] max_iterations continue: resetting iteration count from {} to 0",
+                state.iterations
+            );
+            0
+        } else {
+            state.iterations
+        };
+
         let ctx = LoopContext {
             messages,
-            iterations: state.iterations,
+            iterations,
             tool_calls_made: state.tool_calls_made,
             tool_names: state.tool_names,
             thread_id: cmd.thread_id,

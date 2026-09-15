@@ -41,7 +41,7 @@ export default function ChatInput({ onSend, disabled, isStreaming, onStop, isInt
     <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
       <form
         onSubmit={handleSubmit}
-        className={`max-w-3xl mx-auto flex items-end gap-2 rounded-2xl border focus-within:ring-2 transition-all p-2 ${
+        className={`max-w-7xl mx-auto flex items-end gap-2 rounded-2xl border focus-within:ring-2 transition-all p-2 ${
           isInterrupt
             ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-300 dark:border-amber-700 focus-within:border-amber-400 focus-within:ring-amber-100 dark:focus-within:ring-amber-900/50'
             : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus-within:border-brand-400 focus-within:ring-brand-100 dark:focus-within:ring-brand-900/50'

@@ -110,14 +110,14 @@ fn build_context(goal: &str, request_context: &str, context_files: &str) -> Stri
     parts.join("\n\n")
 }
 
-/// 构建 volatile tier（当前日期 + 工具列表）
+/// 构建 volatile tier（当前日期时间 + 工具列表）
 ///
-/// 日期只精确到天（不含时分秒），保证同一天内 prompt 字节稳定，
-/// 便于 LLM 前缀缓存命中。时区偏移让 LLM 和工具知道当前所在时区。
+/// 日期精确到秒，让 LLM 知道当前具体时间。
+/// 时区偏移让 LLM 和工具知道当前所在时区。
 fn build_volatile(tools: &[ToolDefinition]) -> String {
     let now = Local::now();
     let weekday = now.format("%A").to_string();
-    let date = now.format("%B %d, %Y").to_string();
+    let date = now.format("%B %d, %Y %H:%M:%S").to_string();
     let offset = now.format("%z").to_string();
     let offset_display = if offset.len() >= 5 {
         format!("UTC{}:{}", &offset[..3], &offset[3..5])

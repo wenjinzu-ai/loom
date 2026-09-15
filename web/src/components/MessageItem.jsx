@@ -32,7 +32,7 @@ export default function MessageItem({ message }) {
       </div>
 
       {/* 消息内容 */}
-      <div className={`flex flex-col max-w-[78%] ${isUser ? 'items-end' : 'items-start'}`}>
+      <div className={`flex flex-col max-w-[88%] ${isUser ? 'items-end' : 'items-start'}`}>
         {!isUser && (
           <ThinkingBlock
             thinking={message.thinking}

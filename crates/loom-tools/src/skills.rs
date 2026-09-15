@@ -100,7 +100,7 @@ impl ToolSet for SkillsToolSet {
             },
             ToolSpec {
                 name: "skill_manage".into(),
-                description: "Create, update, or delete skills — your procedural memory for recurring task types. The call is an operations array (a single edit is a list of one); it applies atomically — any failure rolls back all changes.".into(),
+                description: "Create, update, or delete skills — your procedural memory for recurring task types. The call is an operations array (a single edit is a list of one); it applies atomically — any failure rolls back all changes. ⚠️ The 'delete' action is DESTRUCTIVE and CANNOT be undone. BEFORE performing any 'delete' operation, you MUST call the 'interrupt' tool with value={\"skill\": \"...\", \"reason\": \"...\"} and ask the human to confirm. Only proceed with 'delete' if the human explicitly approves.".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {

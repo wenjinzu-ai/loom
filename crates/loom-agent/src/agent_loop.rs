@@ -299,7 +299,9 @@ impl AgentLoop {
             self.start_liveness_watchdog(ctx.agent_id);
 
         loop {
-            if let Some(event) = self.begin_iteration(&mut ctx, liveness_enabled, &last_activity, start) {
+            if self.begin_iteration(&mut ctx, liveness_enabled, &last_activity, start) {
+                // 达到最大迭代次数：进入人工确认（HITL），让用户决定是否继续或接受当前结果
+                let event = self.handle_max_iterations_interrupt(&mut ctx).await?;
                 return Ok((event, ctx.messages));
             }
 
@@ -423,14 +425,17 @@ impl AgentLoop {
         (true, last_activity, Some((handle, stop_tx)))
     }
 
-    /// 迭代开始：心跳 + 计数 + 超限检查。返回 Some 表示达到上限需结束。
+    /// 迭代开始：心跳 + 计数 + 超限检查。
+    ///
+    /// 返回 `true` 表示已达到最大迭代次数，调用方应发起一次总结 LLM 调用后结束。
+    /// 返回 `false` 表示正常继续。
     fn begin_iteration(
         &self,
         ctx: &mut LoopContext,
         liveness_enabled: bool,
         last_activity: &Arc<std::sync::Mutex<Instant>>,
-        start: Instant,
-    ) -> Option<AgentEvent> {
+        _start: Instant,
+    ) -> bool {
         if liveness_enabled {
             *last_activity.lock().unwrap() = Instant::now();
         }
@@ -452,20 +457,10 @@ impl AgentLoop {
                 ctx.agent_id,
                 self.config.max_iterations
             );
-            let max_msg = format!("[max iterations reached ({})]", self.config.max_iterations);
-            ctx.messages.push(ChatMessage::assistant(max_msg.clone()));
-            let event = finished_event(
-                &ctx.messages,
-                ctx.iterations,
-                ctx.tool_calls_made,
-                &ctx.tool_names,
-                max_msg,
-                start,
-            );
-            return Some(event);
+            return true;
         }
         tracing::debug!("agent {} iteration {} (session_id={:?})", ctx.agent_id, ctx.iterations, self.session_id);
-        None
+        false
     }
 
     /// 记忆 turn-start 钩子
@@ -714,6 +709,43 @@ impl AgentLoop {
         }
         Ok(AgentEvent::Interrupt {
             value: interrupt_value,
+            checkpoint_id: cp.id,
+            thread_id: ctx.thread_id.clone(),
+        })
+    }
+
+    /// 达到最大迭代次数时，进入人工确认（HITL）。
+    ///
+    /// 保存 checkpoint 后返回 Interrupt 事件，前端展示提示让用户选择：
+    /// - 继续执行（恢复后 reset iteration 计数）
+    /// - 停止并让 AI 总结当前结果
+    async fn handle_max_iterations_interrupt(&self, ctx: &mut LoopContext) -> Result<AgentEvent> {
+        tracing::info!(
+            "agent {} max iterations reached, entering HITL confirmation (session_id={:?})",
+            ctx.agent_id,
+            self.session_id
+        );
+        let cp = self.save_checkpoint(ctx, "max_iterations").await?;
+        ctx.last_checkpoint_id = Some(cp.id.clone());
+        if let Some(memory) = &self.memory {
+            let scope = self.memory_scope();
+            let (u, a) = last_turn_pair(&ctx.messages);
+            memory.sync_all(&scope, &u, &a, &ctx.thread_id, &ctx.messages).await;
+            memory.on_session_end(&scope, &ctx.messages).await;
+        }
+        let value = json!({
+            "type": "max_iterations",
+            "message": format!("已达到最大迭代次数（{}），请选择下一步操作：", self.config.max_iterations),
+            "iterations": ctx.iterations,
+            "max_iterations": self.config.max_iterations,
+            "tool_calls_made": ctx.tool_calls_made,
+            "options": [
+                {"label": "继续执行", "value": {"action": "continue"}},
+                {"label": "停止并总结", "value": {"action": "summarize"}}
+            ]
+        });
+        Ok(AgentEvent::Interrupt {
+            value,
             checkpoint_id: cp.id,
             thread_id: ctx.thread_id.clone(),
         })
